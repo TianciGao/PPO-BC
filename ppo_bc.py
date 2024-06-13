@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Normal
 from collections import OrderedDict
+import random
 import robomimic.models.obs_nets as ObsNets
 import robomimic.models.value_nets as ValueNets
 import robomimic.utils.obs_utils as ObsUtils
@@ -19,7 +20,7 @@ class ReplayBuffer:
     def push(self, *args):
         if len(self.buffer) < self.capacity:
             self.buffer.append(None)
-        self.buffer[self.position] = Transition(*args)
+        self.buffer[self.position] = args
         self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size):
@@ -28,12 +29,12 @@ class ReplayBuffer:
     def __len__(self):
         return len(self.buffer)
 
-# Register PPO algorithm
-@register_algo_factory_func("ppo")
+# Register PPO-BC algorithm
+@register_algo_factory_func("ppo_bc")
 def algo_config_to_class(algo_config):
-    return PPO, {}
+    return PPOBC, {}
 
-class PPO(PolicyAlgo, ValueAlgo):
+class PPOBC(PolicyAlgo, ValueAlgo):
     def __init__(self, **kwargs):
         PolicyAlgo.__init__(self, **kwargs)
         self._create_networks()
@@ -50,6 +51,8 @@ class PPO(PolicyAlgo, ValueAlgo):
         self.lamda = self.algo_config.lamda
         self.ppo_update_steps = self.algo_config.ppo_update_steps
         self.bc_loss_weight = self.algo_config.get("bc_loss_weight", 2.5)  # Default to 2.5 if not specified
+        self.noise_distillation_weight = self.algo_config.get("noise_distillation_weight", 0.1)  # 默认值为0.1
+        self.replay_buffer = ReplayBuffer(capacity=10000)
 
     def _create_networks(self):
         self.nets = nn.ModuleDict()
@@ -76,7 +79,7 @@ class PPO(PolicyAlgo, ValueAlgo):
         }
         self.nets['actor'] = actor_class(**actor_args)
 
-    def _create_ritic(self):
+    def _create_critic(self):
         critic_class = ValueNets.ValueNetwork
         critic_args = {
             'obs_shapes': self.obs_shapes,
@@ -132,6 +135,10 @@ class PPO(PolicyAlgo, ValueAlgo):
             dynamic_bc_loss_weight = self.bc_loss_weight * (1 - epoch / self.algo_config.num_epochs)  # 逐步减少BC损失权重
             combined_actor_loss = actor_loss + dynamic_bc_loss_weight * bc_loss
 
+            # Compute noise distillation loss
+            noise_distillation_loss = self._compute_noise_distillation_loss(obs)
+            combined_actor_loss += self.noise_distillation_weight * noise_distillation_loss
+
             critic_loss = self._compute_critic_loss(obs, rewards, dones, next_obs)
 
             if not validate:
@@ -173,10 +180,16 @@ class PPO(PolicyAlgo, ValueAlgo):
         return nn.MSELoss()(values, targets)
 
     def _compute_bc_loss(self, obs, actions):
-        # Compute behavior cloning (BC) loss
         mu, _ = self.nets['actor'](obs)
         bc_loss = nn.MSELoss()(mu, actions)
         return bc_loss
+
+    def _compute_noise_distillation_loss(self, obs):
+        noise = torch.randn_like(obs) * 0.1  # Add small Gaussian noise
+        obs_noisy = obs + noise
+        mu, _ = self.nets['actor'](obs)
+        mu_noisy, _ = self.nets['actor'](obs_noisy)
+        return nn.MSELoss()(mu, mu_noisy)
 
     def _check_for_nan(self, module, name):
         for param_name, param in module.named_parameters():
@@ -199,7 +212,7 @@ class PPO(PolicyAlgo, ValueAlgo):
                     print(f"value: {value}")
                     raise ValueError(f"NaN or Inf detected in {key}")
         elif isinstance(data, torch.Tensor):
-            if torch.isnan(data).any() or torch.isinf(data).any():
+            if torch.isnan(data).any() or torch.isinf(data).any()):
                 print("NaN or Inf detected in tensor")
                 raise ValueError("NaN or Inf detected in tensor")
 
