@@ -1,0 +1,170 @@
+{
+    "algo_name": "ppo_bc",
+    "experiment": {
+        "name": "ppo_bc_experiment",
+        "validate": false,
+        "logging": {
+            "terminal_output_to_txt": true,
+            "log_tb": true,
+            "log_wandb": false,
+            "wandb_proj_name": "debug"
+        },
+        "save": {
+            "enabled": true,
+            "every_n_seconds": null,
+            "every_n_epochs": 20,
+            "epochs": [],
+            "on_best_validation": false,
+            "on_best_rollout_return": true,
+            "on_best_rollout_success_rate": false
+        },
+        "epoch_every_n_steps": 5000,
+        "validation_epoch_every_n_steps": 10,
+        "env": null,
+        "additional_envs": null,
+        "render": false,
+        "render_video": false,
+        "keep_all_videos": false,
+        "video_skip": 5,
+        "rollout": {
+            "enabled": true,
+            "n": 50,
+            "horizon": 1000,
+            "rate": 1,
+            "warmstart": 0,
+            "terminate_on_success": true
+        }
+    },
+    "train": {
+        "data": "/path/to/d4rl/dataset.hdf5",
+        "output_dir": "/path/to/output/dir",
+        "num_data_workers": 0,
+        "hdf5_cache_mode": "all",
+        "hdf5_use_swmr": true,
+        "hdf5_load_next_obs": true,
+        "hdf5_normalize_obs": false,
+        "hdf5_filter_key": null,
+        "hdf5_validation_filter_key": null,
+        "seq_length": 1,
+        "pad_seq_length": true,
+        "frame_stack": 1,
+        "pad_frame_stack": true,
+        "dataset_keys": [
+            "actions",
+            "rewards",
+            "dones"
+        ],
+        "goal_mode": null,
+        "cuda": true,
+        "batch_size": 256,
+        "num_epochs": 1,
+        "seed": 1
+    },
+    "algo": {
+        "optim_params": {
+            "actor": {
+                "learning_rate": {
+                    "initial": 0.000011,
+                    "decay_factor": 0.1,
+                    "epoch_schedule": []
+                },
+                "regularization": {
+                    "L2": 0.0
+                },
+                "start_epoch": -1,
+                "end_epoch": -1
+            },
+            "critic": {
+                "learning_rate": {
+                    "initial": 0.000011,
+                    "decay_factor": 0.1,
+                    "epoch_schedule": []
+                },
+                "regularization": {
+                    "L2": 0.0
+                },
+                "start_epoch": -1,
+                "end_epoch": -1
+            }
+        },
+        "discount": 0.997,
+        "eps_clip": 0.2,
+        "ppo_update_steps": 4,
+        "lamda": 0.97,
+        "gae_lambda": 0.97,
+        "critic": {
+            "use_huber": false,
+            "max_gradient_norm": null,
+            "layer_dims": [
+                300,
+                400
+            ]
+        },
+        "actor": {
+            "layer_dims": [
+                300,
+                400
+            ]
+        },
+        "value_loss_coef": 0.5,
+        "entropy_coef": 0.01,
+        "max_grad_norm": 0.5,
+        "bc_loss_weight": 2.5,
+        "noise_distillation_weight": 0.1,
+        "encoder_kwargs": {
+            "obs": {
+                "core_class": "ObservationEncoder",
+                "feature_activation": "ReLU"
+            }
+        }
+    },
+    "observation": {
+        "modalities": {
+            "obs": {
+                "low_dim": [
+                    "flat"
+                ],
+                "rgb": [],
+                "depth": [],
+                "scan": []
+            },
+            "goal": {
+                "low_dim": [],
+                "rgb": [],
+                "depth": [],
+                "scan": []
+            }
+        },
+        "encoder": {
+            "low_dim": {
+                "core_class": null,
+                "core_kwargs": {},
+                "obs_randomizer_class": null,
+                "obs_randomizer_kwargs": {}
+            },
+            "rgb": {
+                "core_class": "VisualCore",
+                "core_kwargs": {},
+                "obs_randomizer_class": null,
+                "obs_randomizer_kwargs": {}
+            },
+            "depth": {
+                "core_class": "VisualCore",
+                "core_kwargs": {},
+                "obs_randomizer_class": null,
+                "obs_randomizer_kwargs": {}
+            },
+            "scan": {
+                "core_class": "ScanCore",
+                "core_kwargs": {},
+                "obs_randomizer_class": null,
+                "obs_randomizer_kwargs": {}
+            }
+        }
+    },
+    "meta": {
+        "hp_base_config_file": null,
+        "hp_keys": [],
+        "hp_values": []
+    }
+}
