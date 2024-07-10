@@ -91,7 +91,7 @@
         "eps_clip": 0.2,
         "ppo_update_steps": 4,
         "lamda": 0.97,
-        "gae_lambda": 0.97,
+        "gae_lambda": 0.97, 
         "critic": {
             "use_huber": false,
             "max_gradient_norm": null,
